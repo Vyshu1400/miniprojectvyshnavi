@@ -1,231 +1,119 @@
-import {GiHamburgerMenu} from 'react-icons/gi'
-import {FaSearch} from 'react-icons/fa'
+import {Component} from 'react'
 import {Link, withRouter} from 'react-router-dom'
-import {IoCloseCircle} from 'react-icons/io5'
 import Cookies from 'js-cookie'
-import SearchComponentContext from '../../Context/SearchComponentContext'
-
 import './index.css'
+import {FaSearch} from 'react-icons/fa'
 
-const Header = props => {
-  const {match} = props
-  const {path} = match
+import RouteContext from '../../Context/RouteContext'
 
-  const selectedPart = 'blue-color-for-selected'
-  return (
-    <>
-      <SearchComponentContext.Consumer>
+class Header extends Component {
+  render() {
+    const {onClickedSearchBar, onChangeSearchStatus, selectedRoute} = this.props
+    return (
+      <RouteContext.Consumer>
         {value => {
-          const {
-            showSearchComponent,
-            changeStatusOfSearchComponent,
-            updateSearchInput,
-            searchInputValue,
-            searchComponentShowStatusChange,
-            resetSearchInput,
-            showNavItemsUnderHamburger,
-            showOptionsSmall,
-            closeOptionsSmall,
-            searchComponentOpenSmall,
-          } = value
+          const {onChangeSearchCaption, searchCaption} = value
 
-          const searchComponentStatusChange = () => {
-            changeStatusOfSearchComponent()
+          const onChangeSearchInput = event => {
+            onChangeSearchCaption(event.target.value)
+            onChangeSearchStatus(event.target.value)
           }
 
-          const openSearchComponentSmall = () => {
-            searchComponentOpenSmall()
-          }
-
-          const intakeSearchInputText = event => {
-            updateSearchInput(event.target.value)
-          }
-
-          const routingToHomeOrProfile = () => {
-            searchComponentShowStatusChange()
-          }
-
-          const hamburgerClicked = () => {
-            showOptionsSmall()
-          }
-
-          const optionsClose = () => {
-            closeOptionsSmall()
-          }
-
-          const logout = () => {
-            const {history} = props
-            resetSearchInput()
-            searchComponentShowStatusChange()
+          const onClickedLogout = () => {
             Cookies.remove('jwt_token')
+            const {history} = this.props
             history.replace('/login')
           }
 
-          return (
-            <div>
-              <nav className="header-nav-container">
-                <Link
-                  to="/"
-                  onClick={routingToHomeOrProfile}
-                  className="header-logo-link-container"
-                >
-                  <div className="header-website-logo-title-container">
-                    <img
-                      className="header-logo-image"
-                      src="https://res.cloudinary.com/duqlsmi22/image/upload/v1645148617/Standard_Collection_8-website_logo_tid9hk.png"
-                      alt="website logo"
-                    />
-                    <h1 className="header-title">Insta Share</h1>
-                  </div>
-                </Link>
+          const onClickedSearchBtn = () => {
+            onClickedSearchBar(searchCaption)
+            onChangeSearchCaption('')
+          }
 
-                <ul className="nav-items-large-display">
-                  <li className="search-input-and-button-container">
-                    <input
-                      className="search-input-field-header"
-                      type="search"
-                      placeholder="Search Caption"
-                      onChange={intakeSearchInputText}
-                      value={searchInputValue}
-                    />
-                    <button
-                      className="search-button-header-large"
-                      type="button"
-                      testid="searchIcon"
-                      onClick={searchComponentStatusChange}
-                    >
-                      <FaSearch />
-                    </button>
-                  </li>
-                  <li>
-                    <Link
-                      to="/"
-                      onClick={routingToHomeOrProfile}
-                      className="options-header-large"
-                    >
-                      <p
-                        className={`option-header-text-large ${
-                          path === '/' && showSearchComponent === false
-                            ? selectedPart
-                            : null
-                        }`}
-                      >
-                        Home
-                      </p>
+          const onClickedEnterBtn = event => {
+            if (event.key === 'Enter') {
+              onClickedSearchBar(searchCaption)
+              onChangeSearchCaption('')
+            }
+          }
+
+          return (
+            <>
+              <nav className="navbar-container">
+                <div className="navbar-content">
+                  <div className="navbar-logo-card">
+                    <Link to="/">
+                      <img
+                        src="https://res.cloudinary.com/dgbrmgffm/image/upload/v1675321631/samples/InstaShare%20PNG/Standard_Collection_8_pyny2p.png"
+                        alt="website logo"
+                        className="navbar-website-logo"
+                      />
                     </Link>
-                  </li>
-                  <li>
-                    <Link
-                      to="/my-profile"
-                      onClick={routingToHomeOrProfile}
-                      className="options-header-large"
-                    >
-                      <p
-                        className={`option-header-text-large ${
-                          path === '/my-profile' &&
-                          showSearchComponent === false
-                            ? selectedPart
-                            : null
-                        }`}
+                    <h1 className="navbar-logo-title">Insta Share</h1>
+                  </div>
+                  <div className="navbar-content-card">
+                    <div className="search-card">
+                      <input
+                        type="search"
+                        className="search-bar"
+                        placeholder="Search Caption"
+                        value={searchCaption}
+                        onChange={onChangeSearchInput}
+                        onKeyDown={onClickedEnterBtn}
+                      />
+                      <button
+                        type="button"
+                        className="search-btn"
+                        // eslint-disable-next-line react/no-unknown-property
+                        testid="searchIcon"
+                        onClick={onClickedSearchBtn}
                       >
-                        Profile
-                      </p>
-                    </Link>
-                  </li>
-                  <li>
+                        <FaSearch size={16} />
+                      </button>
+                    </div>
+                    <ul className="link-card">
+                      <li>
+                        <Link
+                          to="/"
+                          className={
+                            selectedRoute === 'Home'
+                              ? `nav-link selectedLink`
+                              : 'nav-link'
+                          }
+                        >
+                          Home
+                        </Link>
+                      </li>
+                      <li>
+                        <Link
+                          to="/my-profile"
+                          className={
+                            selectedRoute === 'my-Profile'
+                              ? `nav-link selectedLink`
+                              : 'nav-link'
+                          }
+                        >
+                          Profile
+                        </Link>
+                      </li>
+                    </ul>
                     <button
                       type="button"
-                      onClick={logout}
-                      className="logout-button-large-header"
+                      className="logout-btn"
+                      onClick={onClickedLogout}
                     >
                       Logout
                     </button>
-                  </li>
-                </ul>
-                <div className="nav-items-small-display">
-                  <button
-                    type="button"
-                    onClick={hamburgerClicked}
-                    className="small-nav-hamburger"
-                  >
-                    <GiHamburgerMenu />
-                  </button>
+                  </div>
                 </div>
               </nav>
-              {showNavItemsUnderHamburger && (
-                <ul className="small-display-hamburger-options">
-                  <li>
-                    <Link
-                      to="/"
-                      onClick={routingToHomeOrProfile}
-                      className="each-option-under-hamburger"
-                    >
-                      <p
-                        className={
-                          path === '/' && showSearchComponent === false
-                            ? selectedPart
-                            : null
-                        }
-                      >
-                        Home
-                      </p>
-                    </Link>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={openSearchComponentSmall}
-                      className={`hamburger-search-button ${
-                        showSearchComponent ? selectedPart : null
-                      } `}
-                    >
-                      Search
-                    </button>
-                  </li>
-                  <li>
-                    <Link
-                      to="/my-profile"
-                      onClick={routingToHomeOrProfile}
-                      className="each-option-under-hamburger"
-                    >
-                      <p
-                        className={
-                          path === '/my-profile' &&
-                          showSearchComponent === false
-                            ? selectedPart
-                            : null
-                        }
-                      >
-                        Profile
-                      </p>
-                    </Link>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={logout}
-                      className="hamburger-logout-option"
-                    >
-                      Logout
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={optionsClose}
-                      className="close-circle"
-                    >
-                      <IoCloseCircle />
-                    </button>
-                  </li>
-                </ul>
-              )}
-            </div>
+              <hr />
+            </>
           )
         }}
-      </SearchComponentContext.Consumer>
-    </>
-  )
+      </RouteContext.Consumer>
+    )
+  }
 }
 
 export default withRouter(Header)

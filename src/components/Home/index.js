@@ -1,172 +1,378 @@
+/* eslint-disable react/no-unknown-property */
 import {Component} from 'react'
 import Cookies from 'js-cookie'
-
-import Header from '../Header'
-
-import LoaderComponent from '../LoaderComponent'
-import Stories from '../Stories'
-import UsersPosts from '../UsersPosts'
-import FailureView from '../FailureView'
-import SearchComponent from '../SearchComponent'
-import SearchComponentContext from '../../Context/SearchComponentContext'
-
 import './index.css'
 
-const dataFetchStatusConstants = {
-  initial: 'INITIAL',
-  loading: 'LOADING',
+import Loader from 'react-loader-spinner'
+
+import Header from '../Header'
+import ReactSlick from '../ReactSlick'
+import PostItemDetails from '../PostItemDetails'
+
+const status = {
+  initial: 'LOADING',
   success: 'SUCCESS',
-  failure: 'FAILURE',
+  failed: 'FAILED',
 }
 
 class Home extends Component {
   state = {
-    storiesFetchStatus: dataFetchStatusConstants.initial,
-    userStories: [],
-    postsFetchStatus: dataFetchStatusConstants.initial,
-    usersPosts: [],
+    userPostArray: [],
+    userStoryArray: [],
+    caption: '',
+    searchPostList: [],
+    storyStatus: status.initial,
+    postStatus: status.initial,
+    searchStatus: status.initial,
+    isSearched: false,
   }
 
   componentDidMount() {
-    this.getUserStories()
-    this.getUsersPosts()
+    this.getInstaShareStories()
+    this.getInstaSharePosts()
   }
 
-  getUserStories = async () => {
+  checkCaption = () => {
+    const {caption} = this.state
+    if (caption.length === 0) {
+      this.setState({isSearched: false})
+    }
+  }
+
+  onChangeSearchStatus = value => {
+    if (value === '') {
+      this.setState({isSearched: false})
+    }
+  }
+
+  getInstaShareStories = async () => {
+    this.setState({storyStatus: status.initial})
+    const url = 'https://apis.ccbp.in/insta-share/stories'
     const jwtToken = Cookies.get('jwt_token')
     const options = {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${jwtToken}`,
-      },
+      headers: {Authorization: `Bearer ${jwtToken}`},
     }
-    this.setState({storiesFetchStatus: dataFetchStatusConstants.loading})
-    const response = await fetch(
-      'https://apis.ccbp.in/insta-share/stories',
-      options,
-    )
+    const response = await fetch(url, options)
 
-    if (response.ok) {
+    if (response.ok === true) {
       const data = await response.json()
-      const userStories = data.users_stories
-      this.setState({storiesFetchStatus: dataFetchStatusConstants.success})
-      this.setState({userStories})
-    }
-    if (!response.ok) {
-      this.setState({storiesFetchStatus: dataFetchStatusConstants.failure})
+      const updatedStoryStatus = data.users_stories.map(each => ({
+        storyUrl: each.story_url,
+        userID: each.user_id,
+        userName: each.user_name,
+      }))
+      this.setState({
+        storyStatus: status.success,
+        userStoryArray: updatedStoryStatus,
+      })
+    } else {
+      this.setState({storyStatus: status.failed})
     }
   }
 
-  getUsersPosts = async () => {
+  getInstaSharePosts = async () => {
+    this.setState({postStatus: status.initial})
+    const url = 'https://apis.ccbp.in/insta-share/posts'
     const jwtToken = Cookies.get('jwt_token')
     const options = {
       method: 'GET',
-      headers: {
-        Authorization: `Bearer ${jwtToken}`,
-      },
+      headers: {Authorization: `Bearer ${jwtToken}`},
     }
-    this.setState({postsFetchStatus: dataFetchStatusConstants.loading})
-    const response = await fetch(
-      'https://apis.ccbp.in/insta-share/posts',
-      options,
-    )
+    const response = await fetch(url, options)
+
+    if (response.ok === true) {
+      const data = await response.json()
+      const updatedUserPostDetails = data.posts.map(each => ({
+        postId: each.post_id,
+        userId: each.user_id,
+        userName: each.user_name,
+        profilePic: each.profile_pic,
+        postDetails: {
+          imageUrl: each.post_details.image_url,
+          caption: each.post_details.caption,
+        },
+        likesCount: each.likes_count,
+        comments: each.comments.map(eachItem => ({
+          userName: eachItem.user_name,
+          userID: eachItem.user_id,
+          comment: eachItem.comment,
+        })),
+        createdAt: each.created_at,
+      }))
+      this.setState({
+        userPostArray: updatedUserPostDetails,
+        postStatus: status.success,
+      })
+    } else {
+      this.setState({postStatus: status.failed})
+    }
+  }
+
+  getSearchPost = async () => {
+    this.setState({searchStatus: status.initial, isSearched: true})
+    const {caption} = this.state
+    const jwtToken = Cookies.get('jwt_token')
+    const url = `https://apis.ccbp.in/insta-share/posts?search=${caption}`
+    const options = {
+      method: 'GET',
+      headers: {Authorization: `Bearer ${jwtToken}`},
+    }
+    const response = await fetch(url, options)
+
     if (response.ok) {
       const data = await response.json()
-      const usersPosts = data.posts
-      this.setState({postsFetchStatus: dataFetchStatusConstants.success})
-      this.setState({usersPosts})
-    }
-    if (!response.ok) {
-      this.setState({postsFetchStatus: dataFetchStatusConstants.failure})
-    }
-  }
-
-  renderUserStories = () => {
-    const {userStories, storiesFetchStatus} = this.state
-    switch (storiesFetchStatus) {
-      case dataFetchStatusConstants.loading:
-        return (
-          <div className="stories-loader-component-container">
-            <LoaderComponent />
-          </div>
-        )
-      case dataFetchStatusConstants.success:
-        return (
-          <div className="stories-container">
-            <div className="stories-small-display">
-              <Stories noOfSlidesToShow={4} userStories={userStories} />
-            </div>
-            <div className="stories-large-display">
-              <Stories noOfSlidesToShow={7} userStories={userStories} />
-            </div>
-          </div>
-        )
-      case dataFetchStatusConstants.failure:
-        return (
-          <div className="stories-failure-container ">
-            <FailureView retryFunction={this.getUserStories} />
-          </div>
-        )
-      default:
-        return null
+      const updatedUserPostDetails = data.posts.map(each => ({
+        postId: each.post_id,
+        userId: each.user_id,
+        userName: each.user_name,
+        profilePic: each.profile_pic,
+        postDetails: {
+          imageUrl: each.post_details.image_url,
+          caption: each.post_details.caption,
+        },
+        likesCount: each.likes_count,
+        comments: each.comments.map(eachItem => ({
+          userName: eachItem.user_name,
+          userID: eachItem.user_id,
+          comment: eachItem.comment,
+        })),
+        createdAt: each.created_at,
+      }))
+      this.setState({
+        searchPostList: updatedUserPostDetails,
+        searchStatus: status.success,
+      })
+      this.checkCaption()
+    } else {
+      this.setState({searchStatus: status.failed})
     }
   }
 
-  renderUsersPosts = () => {
-    const {usersPosts, postsFetchStatus} = this.state
-    switch (postsFetchStatus) {
-      case dataFetchStatusConstants.success:
-        return (
-          <div className="search-component-with-success-results">
-            <ul className="user-posts-container-home">
-              {usersPosts.map(eachPost => (
-                <UsersPosts key={eachPost.post_id} userPost={eachPost} />
-              ))}
-            </ul>
+  onClickedSearchBar = searchCaption => {
+    this.setState({caption: searchCaption}, this.getSearchPost)
+  }
+
+  renderLoading = () => {
+    const {isSearched} = this.state
+    return (
+      <div
+        className={
+          isSearched ? 'loader-container post-section' : 'loader-container'
+        }
+        testid="loader"
+      >
+        <Loader type="TailSpin" color="#4094EF" height={50} width={50} />
+      </div>
+    )
+  }
+
+  renderStoryLoading = () => (
+    <div className="loader-container" testid="loader">
+      <Loader type="TailSpin" color="#4094EF" height={50} width={50} />
+    </div>
+  )
+
+  renderStory = () => {
+    const {userStoryArray} = this.state
+
+    return <ReactSlick userStoryArray={userStoryArray} />
+  }
+
+  renderPost = () => {
+    const {userPostArray} = this.state
+
+    return (
+      <ul className="post-list-container">
+        {userPostArray.map(eachItem => (
+          <PostItemDetails postItem={eachItem} key={eachItem.postId} />
+        ))}
+      </ul>
+    )
+  }
+
+  renderSearchCaption = () => {
+    const {searchPostList} = this.state
+
+    return (
+      <>
+        {searchPostList.length > 0 ? (
+          <>
+            <h1 className="search-heading">Search Results</h1>
+            <div className="search-card-container">
+              <ul className="post-list-container">
+                {searchPostList.map(eachItem => (
+                  <PostItemDetails postItem={eachItem} key={eachItem.postId} />
+                ))}
+              </ul>
+            </div>
+          </>
+        ) : (
+          <div className="search-failure-container">
+            <img
+              src="https://res.cloudinary.com/dgbrmgffm/image/upload/v1675865026/samples/InstaShare%20PNG/Group_udoax3.png"
+              alt="search not found"
+              className="search-failure-view-img"
+            />
+            <h1 className="search-error-title">Search Not Found</h1>
+            <p className="search-error-text">
+              Try different keyword or search again
+            </p>
           </div>
-        )
-      case dataFetchStatusConstants.loading:
-        return (
-          <div className="posts-loader-component-container">
-            <LoaderComponent />
-          </div>
-        )
-      case dataFetchStatusConstants.failure:
-        return (
-          <div className="posts-loader-component-container">
-            <FailureView retryFunction={this.getUsersPosts} />
-          </div>
-        )
+        )}
+      </>
+    )
+  }
+
+  onClickedPostTryAgain = () => {
+    this.getInstaSharePosts()
+  }
+
+  onClickedStoryTryAgain = () => {
+    this.getInstaShareStories()
+  }
+
+  onClickedSearchTryAgain = () => {
+    this.getSearchPost()
+  }
+
+  renderPostFailureView = () => (
+    <div className="home-failure-container">
+      <img
+        src="https://res.cloudinary.com/dgbrmgffm/image/upload/v1675777842/samples/InstaShare%20PNG/Icon_t6zrkg.png"
+        alt="failure view"
+        className="home-failure-view-img"
+      />
+      <p className="home-error-msg">Something went wrong. Please try again</p>
+      <button
+        type="button"
+        className="home-failure-btn"
+        onClick={this.onClickedPostTryAgain}
+      >
+        Try again
+      </button>
+    </div>
+  )
+
+  renderStoryFailureView = () => (
+    <div className="home-failure-container">
+      <img
+        src="https://res.cloudinary.com/dgbrmgffm/image/upload/v1675777842/samples/InstaShare%20PNG/Icon_t6zrkg.png"
+        alt="failure view"
+        className="home-failure-view-img"
+      />
+      <p className="home-error-msg">Something went wrong. Please try again</p>
+      <button
+        type="button"
+        className="home-failure-btn"
+        onClick={this.onClickedStoryTryAgain}
+      >
+        Try again
+      </button>
+    </div>
+  )
+
+  renderSearchFailureView = () => (
+    <div className="failure-bg">
+      <div className="home-failure-container">
+        <img
+          src="https://res.cloudinary.com/dgbrmgffm/image/upload/v1675777842/samples/InstaShare%20PNG/Icon_t6zrkg.png"
+          alt="failure view"
+          className="home-failure-view-img"
+        />
+        <p className="home-error-msg">Something went wrong. Please try again</p>
+        <button
+          type="button"
+          className="home-failure-btn"
+          onClick={this.onClickedSearchTryAgain}
+        >
+          Try again
+        </button>
+      </div>
+    </div>
+  )
+
+  renderStorySection = () => {
+    this.renderPostSection()
+    const {storyStatus} = this.state
+    let storyMode
+
+    switch (storyStatus) {
+      case status.initial:
+        storyMode = this.renderStoryLoading()
+        break
+      case status.success:
+        storyMode = this.renderStory()
+        break
+      case status.failed:
+        storyMode = this.renderStoryFailureView()
+        break
       default:
-        return null
+        break
     }
+    return storyMode
+  }
+
+  renderPostSection = () => {
+    const {postStatus} = this.state
+    let postMode
+
+    switch (postStatus) {
+      case status.initial:
+        postMode = this.renderLoading()
+        break
+      case status.success:
+        postMode = this.renderPost()
+        break
+      case status.failed:
+        postMode = this.renderPostFailureView()
+        break
+      default:
+        break
+    }
+    return postMode
+  }
+
+  renderSearchSection = () => {
+    const {searchStatus} = this.state
+    let searchMode
+
+    switch (searchStatus) {
+      case status.initial:
+        searchMode = this.renderLoading()
+        break
+      case status.success:
+        searchMode = this.renderSearchCaption()
+        break
+      case status.failed:
+        searchMode = this.renderSearchFailureView()
+        break
+      default:
+        break
+    }
+    return searchMode
   }
 
   render() {
+    const {searchCaption, isSearched} = this.state
     return (
-      <div>
-        <Header className="for-header-test" />
-
-        <SearchComponentContext.Consumer>
-          {value => {
-            const {showSearchComponent} = value
-
-            return (
-              <>
-                {showSearchComponent ? (
-                  <>
-                    <SearchComponent />
-                  </>
-                ) : (
-                  <>
-                    {this.renderUserStories()}
-                    {this.renderUsersPosts()}
-                  </>
-                )}
-              </>
-            )
-          }}
-        </SearchComponentContext.Consumer>
+      <div className="homePage-container">
+        <Header
+          searchCaption={searchCaption}
+          onClickedSearchBar={this.onClickedSearchBar}
+          onChangeSearchStatus={this.onChangeSearchStatus}
+          selectedRoute={isSearched === false ? 'Home' : undefined}
+        />
+        <div className="home-post-container">
+          <div className="home-content-container">
+            {isSearched === false ? this.renderStorySection() : null}
+            {isSearched === false ? (
+              <div className="post-section">{this.renderPostSection()}</div>
+            ) : (
+              this.renderSearchSection()
+            )}
+          </div>
+        </div>
       </div>
     )
   }
